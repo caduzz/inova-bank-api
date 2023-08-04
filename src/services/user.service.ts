@@ -48,7 +48,7 @@ export default class UserServices {
     }
 
     async findAll (): Promise<UserServiceFindResponse> {
-        const users = await this.prisma.user.findMany()
+        const users = await this.prisma.user.findMany({where: { active: true }})
 
         if(users.length <= 0)
             return { error: true, msg: 'Users not found', status: 404 }
@@ -66,7 +66,7 @@ export default class UserServices {
     }
 
     async deleteById (id: number): Promise<PromiseServiceResponse> {
-        const user = await this.prisma.user.updateMany({ where: { AND: {id, active: true} }, data: { active: false } })
+        const user = await this.prisma.user.updateMany({ where: { AND: { id, active: true } }, data: { active: false } })
     
         if(user.count === 0)
             return { error: false, msg: 'User not found', status: 404}
