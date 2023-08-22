@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IUserCreate } from "../@types/user";
+import { IUserCreate, IUserLogin } from "../@types/user";
 
 import UserServices from "../services/user.service";
 
@@ -9,7 +9,15 @@ export default class UserController {
     constructor () {
         this.service = new UserServices()
     }
-    
+
+    async login (req: Request, res: Response) {
+        const data:IUserLogin = req.body
+
+        const { error, status, msg, token } = await this.service.login(data)
+
+        res.status(status).json({ error, msg, token })
+    }
+
     async create (req: Request, res: Response) {
         const data:IUserCreate = req.body
 

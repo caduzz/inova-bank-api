@@ -7,6 +7,9 @@ const middlewares = new UserMiddleware()
 
 const userRouter = express.Router();
 
+//Rota Para Fazer Login
+userRouter.post('/login', middlewares.login, (req, res) => controller.login(req, res));
+
 //Rota Para Criar Um Usiario
 userRouter.post('/', middlewares.create, (req, res) => controller.create(req, res));
 

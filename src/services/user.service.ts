@@ -1,20 +1,44 @@
 import { PrismaClient } from "@prisma/client";
 
-import { IUserCreate, UserServiceFindAllResponse, UserServiceFindResponse } from "../@types/user";
+import { IUserCreate, IUserLogin, UserLoginResponse, UserServiceFindAllResponse, UserServiceFindResponse } from "../@types/user";
 import { PromiseServiceResponse } from "../@types/global";
 
 import crypt from "../utils/crypt";
+import TokenManager from "../utils/token";
 
 export default class UserServices {
     private prisma: PrismaClient
     private crypt: crypt
+    private tokenManager: TokenManager
 
     constructor () {
         this.prisma = new PrismaClient()
         this.crypt = new crypt()
+        this.tokenManager = new TokenManager()
     }
 
-    async create (data: IUserCreate): Promise<PromiseServiceResponse> {
+    async login ({ email, cpf, password }: IUserLogin): Promise<UserLoginResponse> {
+        const user = await this.prisma.user.findFirst({ 
+            where: { 
+                OR: [
+                    { email }, 
+                    { cpf }
+                ]
+            }
+        })
+        
+        if(user){
+            this.crypt.encrypt_validate(password, user.password)
+
+            const token = this.tokenManager.getToken(user.id)
+
+            return { error: false, status: 200, token }
+        }
+
+        return { error: true, msg: 'User Not Found', status: 404 }
+    }
+
+    async create (data: IUserCreate): Promise<UserLoginResponse> {
         data.password = await this.crypt.encrypt(data.password)
 
         const validateUser = await this.prisma.user.findMany({ 
@@ -44,11 +68,23 @@ export default class UserServices {
         if(!user)
             return { error: true, msg: 'Error to inser user in data base', status: 400 }
 
-        return { error: false, msg: 'Sucess to insert user in data base', status: 200 }
+        const token = this.tokenManager.getToken(user.id)
+
+        return { error: false, status: 200, token }
     }
 
     async findAll (): Promise<UserServiceFindResponse> {
-        const users = await this.prisma.user.findMany({where: { active: true }})
+        const users = await this.prisma.user.findMany({ 
+            where: { active: true },
+            select: { 
+                id: true, 
+                active: true, 
+                age: true, 
+                cpf: true, 
+                email: true, 
+                name: true 
+            }
+        })
 
         if(users.length <= 0)
             return { error: true, msg: 'Users not found', status: 404 }
@@ -57,7 +93,17 @@ export default class UserServices {
     }
 
     async findById (id: number): Promise<UserServiceFindAllResponse> {
-        const user = await this.prisma.user.findUnique({ where: { id } })
+        const user = await this.prisma.user.findUnique({ 
+            where: { id }, 
+            select: { 
+                id: true, 
+                active: true, 
+                age: true, 
+                cpf: true, 
+                email: true, 
+                name: true 
+            } 
+        })
 
         if(!user)
             return { error: true, msg: 'User not found', status: 404 }

@@ -1,8 +1,35 @@
 import { NextFunction, Request, Response } from "express"
-import { IUserCreate, IUserFind } from "../@types/user"
+import { IUserCreate, IUserFind, IUserLogin } from "../@types/user"
 import Joi from "joi"
 
 export default class UserMiddleware {
+
+    login (req: Request, res: Response, next: NextFunction) {
+        const body: IUserLogin = req.body
+
+        if(!body.cpf && !body.email)
+            return res.status(400).json({ error: true, msg: 'Cpf and Email is empty' }) 
+
+        const schema = Joi.object<IUserLogin>({
+            email: Joi
+                .string()
+                .email()
+                .max(100),
+            cpf: Joi
+                .string()
+                .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/),
+            password: Joi
+                .string()
+                .required()
+                .max(34)
+        })
+
+        const {error} = schema.validate(body)
+        if(error) return res.status(500).json({ error: true, msg: error.message })
+
+        next()
+    }
+
     create (req: Request, res: Response, next: NextFunction) {
         const body:IUserCreate = req.body
 
@@ -34,7 +61,7 @@ export default class UserMiddleware {
         })
 
         const {error} = schema.validate(body)
-        if(error) return res.status(500).json({ error: true, msg: error.message })
+        if(error) return res.status(400).json({ error: true, msg: error.message })
 
         next()
     }
